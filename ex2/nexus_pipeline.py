@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Protocol, Any, Union, List, Dict
+from collections import Counter
 
 
 class ProcessingStage(Protocol):
@@ -25,15 +26,12 @@ class TransformStage:
 
         if isinstance(data, str):
             print("Transform: Parsed and structured data")
-            count_action = 0
-            for i in data.split(","):
-                if i == "action":
-                    count_action += 1
-            return {"count_action": count_action}
+            counts = Counter(data.split(","))
+            return {"count_action": counts.get("action", 0)}
 
         if isinstance(data, list):
             print("Transform: Aggregated and filtered")
-            avg = round(sum(data) / len(data), 1)
+            avg = sum(data) / len(data)
             return {"count": len(data), "avg": avg}
 
         return data
@@ -184,7 +182,7 @@ def create_pipelines():
     return [json_pipeline, csv_pipeline, stream_pipeline]
 
 
-def configure_stages(pipelines: list[ProcessingPipeline]) -> None:
+def configure_stages(pipelines: List[ProcessingPipeline]) -> None:
     print("Stage 1: Input validation and parsing")
     print("Stage 2: Data transformation and enrichment")
     print("Stage 3: Output formatting and delivery\n")
