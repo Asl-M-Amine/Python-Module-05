@@ -7,58 +7,66 @@ class ProcessingStage(Protocol):
     def process(self, data: Any) -> Any:
         ...
 
+    def display(self, data: Any) -> None:
+        ...
+
 
 class InputStage:
     def process(self, data: Any) -> Any:
         if data is None:
             raise ValueError("Invalid data format")
-        print(f'Input: "{data}"')
         return data
+
+    def display(self, data: Any) -> None:
+        print(f'Input: "{data}"')
 
 
 class TransformStage:
     def process(self, data: Any) -> Any:
-
         if isinstance(data, dict) and "value" in data:
-            print("Transform: Enriched with metadata and validation")
             data["status"] = "Normal range"
             return data
 
         if isinstance(data, str):
-            print("Transform: Parsed and structured data")
             counts = Counter(data.split(","))
             return {"count_action": counts.get("action", 0)}
 
         if isinstance(data, list):
-            print("Transform: Aggregated and filtered")
             avg = sum(data) / len(data)
             return {"count": len(data), "avg": avg}
 
         return data
 
+    def display(self, data: Any) -> None:
+        if isinstance(data, dict) and "value" in data:
+            print("Transform: Enriched with metadata and validation")
+        if isinstance(data, str):
+            print("Transform: Parsed and structured data")
+        if isinstance(data, list):
+            print("Transform: Aggregated and filtered")
+
 
 class OutputStage:
     def process(self, data: Any) -> Any:
+        return data
 
+    def display(self, data: Any) -> None:
         if isinstance(data, dict) and "value" in data:
             print(f"Output: Processed temperature reading: "
                   f"{data['value']}°C ({data['status']})\n")
-
         elif isinstance(data, dict) and "count" in data:
             print(f"Output: Stream summary: {data['count']} readings, "
                   f"avg: {data['avg']}°C\n")
-
         else:
             print(f"Output: User activity logged: "
                   f"{data['count_action']} actions processed\n")
-
-        return data
 
 
 class ProcessingPipeline(ABC):
 
     def __init__(self) -> None:
         self.stages = []
+        self.affich = True
         self.stats: Dict[str, int] = {
          "stagesexecuted": 0, "success": 0, "errors": 0}
 
@@ -69,10 +77,12 @@ class ProcessingPipeline(ABC):
     def process(self, data: Any) -> Union[str, Any]:
         ...
 
-    def execute(self, data: Any) -> Any:
+    def execute(self, data: Any, affich: bool) -> Any:
         try:
             i = 1
             for stage in self.stages:
+                if affich:
+                    stage.display(data)
                 data = stage.process(data)
                 self.stats["stagesexecuted"] += 1
                 i += 1
@@ -95,8 +105,7 @@ class JSONAdapter(ProcessingPipeline):
         self.pipeline_id = pipeline_id
 
     def process(self, data: Any) -> Union[str, Any]:
-        print("Processing JSON data through pipeline...")
-        return self.execute(data)
+        return self.execute(data, self.affich)
 
 
 class CSVAdapter(ProcessingPipeline):
@@ -106,8 +115,7 @@ class CSVAdapter(ProcessingPipeline):
         self.pipeline_id = pipeline_id
 
     def process(self, data: Any) -> Union[str, Any]:
-        print("Processing CSV data through same pipeline...")
-        return self.execute(data)
+        return self.execute(data, self.affich)
 
 
 class StreamAdapter(ProcessingPipeline):
@@ -117,8 +125,7 @@ class StreamAdapter(ProcessingPipeline):
         self.pipeline_id = pipeline_id
 
     def process(self, data: Any) -> Union[str, Any]:
-        print("Processing Stream data through same pipeline...")
-        return self.execute(data)
+        return self.execute(data, self.affich)
 
 
 class NexusManager:
@@ -130,29 +137,13 @@ class NexusManager:
     def add_pipeline(self, pipeline: ProcessingPipeline) -> None:
         self.pipelines.append(pipeline)
 
-    def process_data(self) -> None:
-        pipelines = ["Pipeline A", "Pipeline B", "Pipeline C"]
-        stages = ["Input", "Transform", "Output"]
-        steps = {}
-        stats = {"stagesexecuted": 0, "success": 0}
-        print(pipelines[0], end=" ")
-        steps["A_pipeline"] = "Processed"
-        for _ in stages:
-            stats['success'] += 1
-        stats['stagesexecuted'] += 1
-        print("->", pipelines[1], end=" ")
-        steps["B_pipeline"] = "Analyzed"
-        for _ in stages:
-            stats['success'] += 1
-        stats['stagesexecuted'] += 1
-        print("->", pipelines[2])
-        steps["C_pipeline"] = "Stored"
-        for _ in stages:
-            stats['success'] += 1
-        stats['stagesexecuted'] += 1
-        print(f"Data flow: Raw -> {steps['A_pipeline']} -> "
-              f"{steps['B_pipeline']} -> {steps['C_pipeline']}\n")
-
+    def process_data(self, data: Any) -> None:
+        print("Pipeline A -> Pipeline B -> Pipeline C")
+        current_data = data
+        for piplien in self.pipelines:
+            piplien.affich = False
+            current_data = piplien.process(current_data)
+        print("Data flow: Raw -> Processed -> Analyzed -> Stored\n")
         total_pipelines = len(self.pipelines)
         if total_pipelines == 0:
             print("No pipelines registered!")
@@ -202,14 +193,17 @@ def register_pipelines(manager: NexusManager,
 def run_processing_demo(pipelines: List[ProcessingPipeline]) -> None:
     print("=== Multi-Format Data Processing ===\n")
     json_pipeline, csv_pipeline, stream_pipeline = pipelines
+    print("Processing JSON data through pipeline...")
     json_pipeline.process({"sensor": "temp", "value": 23.5, "unit": "C"})
+    print("Processing CSV data through same pipeline...")
     csv_pipeline.process("user,action,timestamp")
+    print("Processing Stream data through same pipeline...")
     stream_pipeline.process([21.5, 22.0, 23.0, 22.5, 21.5])
 
 
 def run_chaining_demo(manager: NexusManager) -> None:
     print("=== Pipeline Chaining Demo ===")
-    manager.process_data()
+    manager.process_data({"sensor": "temp", "value": 30.5, "unit": "C"})
 
 
 def run_error_test(json_pipeline: ProcessingPipeline) -> None:
