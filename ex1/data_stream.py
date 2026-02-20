@@ -26,6 +26,10 @@ class SensorStream(DataStream):
     def process_batch(self, data_batch: List[Any]) -> str:
         try:
             self.processed_count = len(data_batch)
+            alerts = sum(1 for d in data_batch if d.get("temp", 0) > 30
+                         or d.get("temp", 0) < 0)
+            if alerts:
+                return "[ALERT] found extern-values!!"
             total_temp = sum(d.get("temp", 0.0) for d in data_batch)
             avg_temp = (total_temp / self.processed_count
                         if self.processed_count else 0.0)
@@ -194,14 +198,11 @@ def polymorphic_processing(sensor: SensorStream,
                       {"buy": 10, "sell": 0}],
         "EVENT_001": ["login", "error", "logout"]
     }
-
     processor.process_all(data_batches)
 
     print("\nStream filtering active: High-priority data only")
-
     filter_sen = sensor.filter_data(data_batches["SENSOR_001"], "high-alert")
     filter_tran = transaction.filter_data(data_batches["TRANS_001"], "large")
-
     print(f"Filtered results: {len(filter_sen)} critical sensor alerts, "
           f"{len(filter_tran)} large transaction")
 

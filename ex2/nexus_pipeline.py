@@ -7,9 +7,6 @@ class ProcessingStage(Protocol):
     def process(self, data: Any) -> Any:
         ...
 
-    def display(self, data: Any) -> None:
-        ...
-
 
 class InputStage:
     def process(self, data: Any) -> Any:
@@ -105,7 +102,11 @@ class JSONAdapter(ProcessingPipeline):
         self.pipeline_id = pipeline_id
 
     def process(self, data: Any) -> Union[str, Any]:
-        return self.execute(data, self.affich)
+        if not isinstance(data, dict):
+            return "Invalid JSON format"
+
+        cleaned = {k: v for k, v in data.items() if v is not None}
+        return self.execute(cleaned, self.affich)
 
 
 class CSVAdapter(ProcessingPipeline):
@@ -125,7 +126,11 @@ class StreamAdapter(ProcessingPipeline):
         self.pipeline_id = pipeline_id
 
     def process(self, data: Any) -> Union[str, Any]:
-        return self.execute(data, self.affich)
+        if not isinstance(data, list):
+            return "Invalid stream format"
+
+        filtered = [x for x in data if isinstance(x, (int, float))]
+        return self.execute(filtered, self.affich)
 
 
 class NexusManager:
@@ -206,10 +211,10 @@ def run_chaining_demo(manager: NexusManager) -> None:
     manager.process_data({"sensor": "temp", "value": 30.5, "unit": "C"})
 
 
-def run_error_test(json_pipeline: ProcessingPipeline) -> None:
+def run_error_test(csv_pipeline: ProcessingPipeline) -> None:
     print("\n=== Error Recovery Test ===")
     print("Simulating pipeline failure...")
-    json_pipeline.process(None)
+    csv_pipeline.process(None)
 
 
 def main() -> None:
@@ -219,7 +224,7 @@ def main() -> None:
     register_pipelines(manager, pipelines)
     run_processing_demo(pipelines)
     run_chaining_demo(manager)
-    run_error_test(pipelines[0])
+    run_error_test(pipelines[1])
 
     print("\nNexus Integration complete. All systems operational.")
 

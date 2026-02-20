@@ -48,6 +48,9 @@ class NumericProcessor(DataProcessor):
             return True
         return False
 
+    def format_output(self, result: str) -> str:
+        return super().format_output(result)
+
 
 class TextProcessor(DataProcessor):
     def process(self, data: Any) -> str:
@@ -67,6 +70,9 @@ class TextProcessor(DataProcessor):
     def validate(self, data: Any) -> bool:
         return type(data) is str
 
+    def format_output(self, result: str) -> str:
+        return super().format_output(result)
+
 
 class LogProcessor(DataProcessor):
     def process(self, data: Any) -> str:
@@ -75,24 +81,28 @@ class LogProcessor(DataProcessor):
                 return "[ALERT] ERROR level detected: invalid log data"
             if not data:
                 return "data empty"
-
-            if data[:6] == "ERROR:":
-                message = data[6:].strip()
+            parts = data.split(":", 1)
+            if len(parts) != 2:
+                return "log not found"
+            level, message = parts
+            level = level.strip()
+            message = message.strip()
+            if level.upper() == "ERROR":
                 return "[ALERT] ERROR level detected: " + message
-            elif data[:8] == "WARNING:":
-                message = data[8:].strip()
+            elif level.upper() == "WARNING":
                 return "[WARNING] WARNING level detected: " + message
-            elif data[:5] == "INFO:":
-                message = data[5:].strip()
+            elif level.upper() == "INFO":
                 return "[INFO] INFO level detected: " + message
             else:
-                return "[INFO] INFO level detected: " + data.strip()
-
+                return "log not found"
         except Exception as e:
             return f"[ALERT] ERROR level detected: {e}"
 
     def validate(self, data: Any) -> bool:
         return type(data) is str
+
+    def format_output(self, result: str) -> str:
+        return super().format_output(result)
 
 
 def numeric_init() -> None:
@@ -133,7 +143,7 @@ def log_init() -> None:
 
 def Polymorphic_handle() -> None:
     print("=== Polymorphic Processing Demo ===\n")
-    print("Processing multiple data types through same interface...\n")
+    print("Processing multiple data types through same interface...")
 
     processors = [NumericProcessor(), TextProcessor(), LogProcessor()]
     data_mapping: Dict[str, Union[List[int], str]] = {
