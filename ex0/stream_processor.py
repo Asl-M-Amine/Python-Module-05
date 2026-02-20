@@ -87,11 +87,11 @@ class LogProcessor(DataProcessor):
             level, message = parts
             level = level.strip()
             message = message.strip()
-            if level.upper() == "ERROR":
+            if level == "ERROR":
                 return "[ALERT] ERROR level detected: " + message
-            elif level.upper() == "WARNING":
+            elif level == "WARNING":
                 return "[WARNING] WARNING level detected: " + message
-            elif level.upper() == "INFO":
+            elif level == "INFO":
                 return "[INFO] INFO level detected: " + message
             else:
                 return "log not found"

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Protocol, Any, Union, List, Dict
+from typing import Protocol, Any, Union, List, Dict, Optional
 from collections import Counter
 
 
@@ -29,7 +29,7 @@ class TransformStage:
             return {"count_action": counts.get("action", 0)}
 
         if isinstance(data, list):
-            avg = sum(data) / len(data)
+            avg = sum(data) / len(data) if len(data) else 0
             return {"count": len(data), "avg": avg}
 
         return data
@@ -102,11 +102,11 @@ class JSONAdapter(ProcessingPipeline):
         self.pipeline_id = pipeline_id
 
     def process(self, data: Any) -> Union[str, Any]:
-        if not isinstance(data, dict):
-            return "Invalid JSON format"
-
-        cleaned = {k: v for k, v in data.items() if v is not None}
-        return self.execute(cleaned, self.affich)
+        try:
+            cleaned = {k: v for k, v in data.items() if v is not None}
+            return self.execute(cleaned, self.affich)
+        except Exception as e:
+            print(f"[ALERT] Error detected : {e}\n")
 
 
 class CSVAdapter(ProcessingPipeline):
@@ -116,7 +116,10 @@ class CSVAdapter(ProcessingPipeline):
         self.pipeline_id = pipeline_id
 
     def process(self, data: Any) -> Union[str, Any]:
-        return self.execute(data, self.affich)
+        try:
+            return self.execute(data, self.affich)
+        except Exception as e:
+            print(f"[ALERT] Error detected : {e}\n")
 
 
 class StreamAdapter(ProcessingPipeline):
@@ -126,11 +129,11 @@ class StreamAdapter(ProcessingPipeline):
         self.pipeline_id = pipeline_id
 
     def process(self, data: Any) -> Union[str, Any]:
-        if not isinstance(data, list):
-            return "Invalid stream format"
-
-        filtered = [x for x in data if isinstance(x, (int, float))]
-        return self.execute(filtered, self.affich)
+        try:
+            filtered = [x for x in data if isinstance(x, (int, float))]
+            return self.execute(filtered, self.affich)
+        except Exception as e:
+            print(f"[ALERT] Error detected : {e}\n")
 
 
 class NexusManager:
@@ -144,7 +147,7 @@ class NexusManager:
 
     def process_data(self, data: Any) -> None:
         print("Pipeline A -> Pipeline B -> Pipeline C")
-        current_data = data
+        current_data: Optional[Any] = data
         for piplien in self.pipelines:
             piplien.affich = False
             current_data = piplien.process(current_data)
